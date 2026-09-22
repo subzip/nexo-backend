@@ -1,0 +1,106 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id String @id @default(uuid())
+
+  username String @unique
+  passwordHash String
+
+  avatar String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lastSeen DateTime?
+
+  participation ChatParticipants[]
+  messages Message[]
+  sessions Session[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([userId])
+}
+
+enum ChatType {
+  direct
+  group
+}
+
+model Chat {
+  id String @id @default(uuid())
+
+  type ChatType
+
+  name String?
+  avatar String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  participants ChatParticipants[]
+  messages Message[]
+}
+
+enum ParticipantRole {
+  owner
+  participant
+}
+
+model ChatParticipants {
+  id String @id @default(uuid())
+
+  userId String
+  chatId String
+
+  role ParticipantRole
+
+  joinedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  chat Chat @relation(fields: [chatId], references: [id])
+
+  @@index([userId])
+  @@index([chatId])
+  @@unique([userId, chatId])
+}
+
+model Message {
+  id String @id @default(uuid())
+
+  chatId String
+  senderId String
+
+  text String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  chat Chat @relation(fields: [chatId], references: [id])
+
+  sender User @relation(fields: [senderId], references: [id])
+
+  @@index([chatId])
+  @@index([senderId])
+}
