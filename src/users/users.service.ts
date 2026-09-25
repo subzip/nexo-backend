@@ -34,6 +34,17 @@ export class UsersService {
     });
   }
 
+  async findByUsernameForAuth(username: string) {
+    return this.prisma.user.findUnique({
+      where: { username },
+      select: {
+        id: true,
+        username: true,
+        passwordHash: true,
+      },
+    });
+  }
+
   async create(data: CreateUserDto) {
     return this.prisma.user.create({
       data: {
