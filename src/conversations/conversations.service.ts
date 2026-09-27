@@ -1,0 +1,139 @@
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { CreateConversationDto } from './dto/create-conversation.dto';
+import { UsersService } from 'src/users/users.service';
+
+@Injectable()
+export class ConversationsService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly usersService: UsersService,
+  ) {}
+
+  async create(dto: CreateConversationDto) {
+    if (dto.userId === dto.creatorId) {
+      throw new BadRequestException(
+        'Cannot create a conversation with yourself',
+      );
+    }
+
+    const creator = await this.usersService.findById(dto.creatorId);
+    const participant = await this.usersService.findById(dto.userId);
+
+    if (!creator || !participant) {
+      throw new NotFoundException('User not found');
+    }
+    //resolve race condition if 2 requests sent at the same time
+    const existingChat = await this.prisma.chat.findFirst({
+      where: {
+        type: 'direct',
+        participants: {
+          some: {
+            userId: dto.creatorId,
+          },
+        },
+        AND: {
+          participants: {
+            some: {
+              userId: dto.userId,
+            },
+          },
+        },
+      },
+    });
+
+    if (existingChat) return existingChat;
+
+    return this.prisma.$transaction(async (tx) => {
+      const chat = await tx.chat.create({
+        data: {
+          type: 'direct',
+        },
+      });
+
+      await tx.chatParticipants.createMany({
+        data: [
+          {
+            chatId: chat.id,
+            role: 'participant',
+            userId: dto.creatorId,
+          },
+          {
+            chatId: chat.id,
+            role: 'participant',
+            userId: dto.userId,
+          },
+        ],
+      });
+
+      return chat;
+    });
+  }
+
+  async findAllByUserId(id: string) {
+    return this.prisma.chat.findMany({
+      where: {
+        participants: {
+          some: {
+            userId: id,
+          },
+        },
+      },
+      include: {
+        participants: {
+          where: {
+            userId: {
+              not: id,
+            },
+          },
+          include: {
+            user: {
+              select: {
+                id: true,
+                avatar: true,
+                username: true,
+                lastSeen: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  async findById(id: string, userId: string) {
+    return this.prisma.chat.findFirst({
+      where: {
+        id,
+        participants: {
+          some: {
+            userId,
+          },
+        },
+      },
+      include: {
+        participants: {
+          where: {
+            userId: {
+              not: userId,
+            },
+          },
+          include: {
+            user: {
+              select: {
+                id: true,
+                avatar: true,
+                username: true,
+                lastSeen: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+}
