@@ -8,6 +8,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { ConversationsModule } from './conversations/conversations.module';
 import { SessionsModule } from './sessions/sessions.module';
+import { MessagesModule } from './messages/messages.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { SessionsModule } from './sessions/sessions.module';
     AuthModule,
     ConversationsModule,
     SessionsModule,
+    MessagesModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],
