@@ -1,0 +1,20 @@
+*   [33mb98b3fc[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeature/messages[m[33m, [m[1;31morigin/develop[m[33m, [m[1;32mdevelop[m[33m)[m Merge pull request #11 from subzip/feature/session-auth
+[31m|[m[32m\[m  
+[31m|[m * [33mfccd9c8[m[33m ([m[1;31morigin/feature/session-auth[m[33m, [m[1;32mfeature/session-auth[m[33m)[m feat(auth): implement session-based auth
+[31m|[m[31m/[m  
+*   [33m7bb938a[m Merge pull request #9 from subzip/feature/conversations
+[33m|[m[34m\[m  
+[33m|[m * [33m37ae5f7[m[33m ([m[1;31morigin/feature/conversations[m[33m, [m[1;32mfeature/conversations[m[33m)[m feat: add conversation module
+[33m|[m[33m/[m  
+*   [33m5924e1e[m Merge pull request #7 from subzip/feature/auth
+[35m|[m[36m\[m  
+[35m|[m * [33m62437d4[m[33m ([m[1;31morigin/feature/auth[m[33m)[m feature(auth): implement auth flow
+[35m|[m[35m/[m  
+*   [33m9d2733e[m Merge pull request #5 from subzip/feature/users-module
+[1;31m|[m[1;32m\[m  
+[1;31m|[m * [33m7eb229a[m[33m ([m[1;31morigin/feature/users-module[m[33m)[m feat(users): implement users module
+[1;31m|[m[1;31m/[m  
+*   [33m4507fa7[m Merge pull request #3 from subzip/feature/prisma-service
+[1;33m|[m[1;34m\[m  
+[1;33m|[m * [33m79b0c54[m[33m ([m[1;31morigin/feature/prisma-service[m[33m)[m feat(db): add prisma service
+[1;33m|[m[1;33m/[m  
