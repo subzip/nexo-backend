@@ -31,7 +31,10 @@ describe('ConversationsService', () => {
           provide: PrismaService,
           useValue: prismaMock,
         },
-        { provide: UsersService, useValue: usersServiceMock },
+        {
+          provide: UsersService,
+          useValue: usersServiceMock,
+        },
       ],
     }).compile();
 
@@ -70,10 +73,7 @@ describe('ConversationsService', () => {
         },
       );
 
-      const result = await service.create({
-        creatorId,
-        userId,
-      });
+      const result = await service.create({ userId }, creatorId);
 
       expect(result).toEqual(chat);
 
@@ -102,12 +102,9 @@ describe('ConversationsService', () => {
     it('should reject creating a conversation with yourself', async () => {
       const userId = 'same-user-id';
 
-      await expect(
-        service.create({
-          creatorId: userId,
-          userId,
-        }),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.create({ userId }, userId)).rejects.toThrow(
+        BadRequestException,
+      );
 
       expect(usersServiceMock.findById).not.toHaveBeenCalled();
       expect(prismaMock.chat.findFirst).not.toHaveBeenCalled();
@@ -116,16 +113,16 @@ describe('ConversationsService', () => {
     });
 
     it('should throw if one of the users does not exist', async () => {
+      const creatorId = 'creator-id';
+      const userId = 'user-id';
+
       usersServiceMock.findById
-        .mockResolvedValueOnce({ id: 'creator-id' })
+        .mockResolvedValueOnce({ id: creatorId })
         .mockResolvedValueOnce(null);
 
-      await expect(
-        service.create({
-          creatorId: 'creator-id',
-          userId: 'user-id',
-        }),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.create({ userId }, creatorId)).rejects.toThrow(
+        NotFoundException,
+      );
 
       expect(usersServiceMock.findById).toHaveBeenCalledTimes(2);
       expect(prismaMock.chat.findFirst).not.toHaveBeenCalled();
@@ -148,10 +145,7 @@ describe('ConversationsService', () => {
 
       prismaMock.chat.findFirst.mockResolvedValue(existingChat);
 
-      const result = await service.create({
-        creatorId,
-        userId,
-      });
+      const result = await service.create({ userId }, creatorId);
 
       expect(result).toEqual(existingChat);
 

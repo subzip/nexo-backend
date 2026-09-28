@@ -3,7 +3,7 @@ import { AuthService } from './auth.service';
 import * as argon2 from 'argon2';
 import { UsersService } from 'src/users/users.service';
 import { ConflictException, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { SessionsService } from 'src/sessions/sessions.service';
 
 jest.mock('argon2');
 
@@ -16,10 +16,11 @@ describe('AuthService', () => {
     create: jest.fn(),
   };
 
-  const argon2Mock = argon2 as jest.Mocked<typeof argon2>;
-  const jwtServiceMock = {
-    signAsync: jest.fn(),
+  const sessionsServiceMock = {
+    create: jest.fn(),
   };
+
+  const argon2Mock = argon2 as jest.Mocked<typeof argon2>;
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -32,8 +33,8 @@ describe('AuthService', () => {
           useValue: usersServiceMock,
         },
         {
-          provide: JwtService,
-          useValue: jwtServiceMock,
+          provide: SessionsService,
+          useValue: sessionsServiceMock,
         },
       ],
     }).compile();
@@ -58,9 +59,7 @@ describe('AuthService', () => {
       };
 
       usersServiceMock.findByUsername.mockResolvedValue(null);
-
       argon2Mock.hash.mockResolvedValue('hashed-password');
-
       usersServiceMock.create.mockResolvedValue(createdUser);
 
       const result = await service.register(dto);
@@ -77,7 +76,7 @@ describe('AuthService', () => {
       });
     });
 
-    it('should throw ConflictException', async () => {
+    it('should throw ConflictException if username already exists', async () => {
       const dto = {
         username: 'andrei',
         password: 'secret',
@@ -91,39 +90,43 @@ describe('AuthService', () => {
       await expect(service.register(dto)).rejects.toThrow(ConflictException);
 
       expect(argon2Mock.hash).not.toHaveBeenCalled();
-
       expect(usersServiceMock.create).not.toHaveBeenCalled();
     });
   });
 
   describe('login', () => {
-    it('should log in a user and return access token', async () => {
+    it('should log in a user and create a session', async () => {
       const dto = {
         username: 'andrei',
         password: 'secret',
       };
 
-      const accessToken = 'access-token';
-
-      usersServiceMock.findByUsernameForAuth.mockResolvedValue({
+      const user = {
         id: 'user-id',
         username: 'andrei',
         passwordHash: 'hashed-password',
-      });
+      };
 
+      usersServiceMock.findByUsernameForAuth.mockResolvedValue(user);
       argon2Mock.verify.mockResolvedValue(true);
-      jwtServiceMock.signAsync.mockResolvedValue(accessToken);
+      sessionsServiceMock.create.mockResolvedValue('session-token');
 
       const result = await service.login(dto);
 
       expect(result).toEqual({
-        accessToken,
+        sessionToken: 'session-token',
       });
 
-      expect(jwtServiceMock.signAsync).toHaveBeenCalledWith({
-        sub: 'user-id',
-        username: 'andrei',
-      });
+      expect(usersServiceMock.findByUsernameForAuth).toHaveBeenCalledWith(
+        'andrei',
+      );
+
+      expect(argon2Mock.verify).toHaveBeenCalledWith(
+        'hashed-password',
+        'secret',
+      );
+
+      expect(sessionsServiceMock.create).toHaveBeenCalledWith('user-id');
     });
 
     it('should throw UnauthorizedException if user does not exist', async () => {
@@ -132,13 +135,16 @@ describe('AuthService', () => {
         password: 'secret',
       };
 
-      usersServiceMock.findByUsernameForAuth.mockResolvedValue(undefined);
+      usersServiceMock.findByUsernameForAuth.mockResolvedValue(null);
 
       await expect(service.login(dto)).rejects.toThrow(UnauthorizedException);
 
-      expect(argon2Mock.verify).not.toHaveBeenCalled();
+      expect(usersServiceMock.findByUsernameForAuth).toHaveBeenCalledWith(
+        'andrei',
+      );
 
-      expect(jwtServiceMock.signAsync).not.toHaveBeenCalled();
+      expect(argon2Mock.verify).not.toHaveBeenCalled();
+      expect(sessionsServiceMock.create).not.toHaveBeenCalled();
     });
 
     it('should throw UnauthorizedException if password is invalid', async () => {
@@ -147,12 +153,13 @@ describe('AuthService', () => {
         password: 'secret',
       };
 
-      usersServiceMock.findByUsernameForAuth.mockResolvedValue({
+      const user = {
         id: 'user-id',
         username: 'andrei',
         passwordHash: 'hashed-password',
-      });
+      };
 
+      usersServiceMock.findByUsernameForAuth.mockResolvedValue(user);
       argon2Mock.verify.mockResolvedValue(false);
 
       await expect(service.login(dto)).rejects.toThrow(UnauthorizedException);
@@ -162,7 +169,7 @@ describe('AuthService', () => {
         'secret',
       );
 
-      expect(jwtServiceMock.signAsync).not.toHaveBeenCalled();
+      expect(sessionsServiceMock.create).not.toHaveBeenCalled();
     });
   });
 });

@@ -5,6 +5,8 @@ import { UsersModule } from 'src/users/users.module';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
+import { SessionsModule } from 'src/sessions/sessions.module';
+import { SessionAuthGuard } from './guards/session-auth.guard';
 
 @Module({
   imports: [
@@ -20,10 +22,10 @@ import { JwtModule } from '@nestjs/jwt';
       }),
     }),
     PrismaModule,
-    AuthModule,
     ConfigModule.forRoot({ isGlobal: true }),
+    SessionsModule,
   ],
-  providers: [AuthService],
+  providers: [AuthService, SessionAuthGuard],
   controllers: [AuthController],
 })
 export class AuthModule {}

@@ -6,14 +6,15 @@ import {
 import { UsersService } from 'src/users/users.service';
 import { RegisterDto } from './dto/register.dto/register.dto';
 import * as argon2 from 'argon2';
-import { JwtService } from '@nestjs/jwt';
+
 import { LoginDto } from './dto/register.dto/login.dto';
+import { SessionsService } from 'src/sessions/sessions.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly usersService: UsersService,
-    private readonly jwtService: JwtService,
+    private readonly sessionsService: SessionsService,
   ) {}
 
   async login(dto: LoginDto) {
@@ -29,15 +30,10 @@ export class AuthService {
     if (!isPasswordValid)
       throw new UnauthorizedException('Invalid credentials');
 
-    const payload = {
-      sub: user.id,
-      username: user.username,
-    };
-
-    const accessToken = await this.jwtService.signAsync(payload);
+    const sessionToken = await this.sessionsService.create(user.id);
 
     return {
-      accessToken,
+      sessionToken,
     };
   }
 
