@@ -33,6 +33,7 @@ model User {
 
 model Session {
   id        String   @id @default(cuid())
+  tokenHash String   @unique
 
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)

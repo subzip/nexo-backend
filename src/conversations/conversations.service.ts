@@ -14,14 +14,14 @@ export class ConversationsService {
     private readonly usersService: UsersService,
   ) {}
 
-  async create(dto: CreateConversationDto) {
-    if (dto.userId === dto.creatorId) {
+  async create(dto: CreateConversationDto, creatorId: string) {
+    if (dto.userId === creatorId) {
       throw new BadRequestException(
         'Cannot create a conversation with yourself',
       );
     }
 
-    const creator = await this.usersService.findById(dto.creatorId);
+    const creator = await this.usersService.findById(creatorId);
     const participant = await this.usersService.findById(dto.userId);
 
     if (!creator || !participant) {
@@ -33,7 +33,7 @@ export class ConversationsService {
         type: 'direct',
         participants: {
           some: {
-            userId: dto.creatorId,
+            userId: creatorId,
           },
         },
         AND: {
@@ -60,7 +60,7 @@ export class ConversationsService {
           {
             chatId: chat.id,
             role: 'participant',
-            userId: dto.creatorId,
+            userId: creatorId,
           },
           {
             chatId: chat.id,
