@@ -9,6 +9,7 @@ import { AuthModule } from './auth/auth.module';
 import { ConversationsModule } from './conversations/conversations.module';
 import { SessionsModule } from './sessions/sessions.module';
 import { MessagesModule } from './messages/messages.module';
+import { WebsocketModule } from './websocket/websocket.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { MessagesModule } from './messages/messages.module';
     ConversationsModule,
     SessionsModule,
     MessagesModule,
+    WebsocketModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],
