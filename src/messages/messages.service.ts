@@ -1,10 +1,18 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateMessageDto } from './dto/create-message.dto';
+import { UsersService } from 'src/users/users.service';
 
 @Injectable()
 export class MessagesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly usersService: UsersService,
+  ) {}
 
   async create(dto: CreateMessageDto, userId: string) {
     const chat = await this.prisma.chat.findFirst({
@@ -47,6 +55,38 @@ export class MessagesService {
     return this.prisma.message.findMany({
       where: {
         chatId,
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+  }
+
+  async findMessagesByUsername(username: string, userId: string) {
+    const otherUser = await this.usersService.findByUsername(username);
+
+    if (!otherUser) throw new NotFoundException('chat not found');
+
+    const chat = await this.prisma.chat.findFirst({
+      where: {
+        participants: {
+          every: {
+            userId: {
+              in: [userId, otherUser?.id],
+            },
+          },
+          some: {
+            userId,
+          },
+        },
+      },
+    });
+
+    if (!chat) throw new ForbiddenException('no chat for this user');
+
+    return this.prisma.message.findMany({
+      where: {
+        chatId: chat.id,
       },
       orderBy: {
         createdAt: 'asc',

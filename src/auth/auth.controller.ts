@@ -1,9 +1,20 @@
-import { Body, Controller, Post, Req, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto/register.dto';
 import { LoginDto } from './dto/register.dto/login.dto';
 import { Response, Request } from 'express';
 import { SessionsService } from 'src/sessions/sessions.service';
+import { SessionAuthGuard } from './guards/session-auth.guard';
+import { CurrentUser } from './decorators/current-user.decorator';
+import { AuthUser } from './types/auth-user.type';
 
 @Controller('auth')
 export class AuthController {
@@ -22,7 +33,7 @@ export class AuthController {
     @Body() dto: LoginDto,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const { sessionToken } = await this.authService.login(dto);
+    const { sessionToken, userInfo } = await this.authService.login(dto);
 
     response.cookie('session', sessionToken, {
       httpOnly: true,
@@ -31,9 +42,7 @@ export class AuthController {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    return {
-      message: 'Logged in',
-    };
+    return userInfo;
   }
 
   @Post('logout')
@@ -50,5 +59,11 @@ export class AuthController {
     return {
       message: 'logged out',
     };
+  }
+
+  @Get('me')
+  @UseGuards(SessionAuthGuard)
+  me(@CurrentUser() user: AuthUser) {
+    return user;
   }
 }

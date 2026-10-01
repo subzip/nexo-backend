@@ -31,9 +31,11 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
 
     const sessionToken = await this.sessionsService.create(user.id);
+    const userInfo = await this.usersService.findById(user.id);
 
     return {
       sessionToken,
+      userInfo,
     };
   }
 
