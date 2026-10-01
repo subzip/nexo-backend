@@ -20,6 +20,11 @@ export class ConversationsController {
     return this.conversationsService.findAllByUserId(user.id);
   }
 
+  @Get('preview')
+  getChatPreview(@CurrentUser() user: AuthUser) {
+    return this.conversationsService.getChatPreview(user.id);
+  }
+
   @Get(':id')
   findById(@Param('id') id: string, @CurrentUser() user: AuthUser) {
     return this.conversationsService.findById(id, user.id);

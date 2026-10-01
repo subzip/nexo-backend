@@ -6,6 +6,7 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { UsersService } from 'src/users/users.service';
+import { ChatPreview } from 'src/auth/types/conversations.type';
 
 @Injectable()
 export class ConversationsService {
@@ -135,5 +136,72 @@ export class ConversationsService {
         },
       },
     });
+  }
+
+  async getChatPreview(userId: string) {
+    const user = await this.usersService.findById(userId);
+
+    if (!user) throw new NotFoundException('User not found');
+
+    const chats = await this.prisma.chat.findMany({
+      where: {
+        type: 'direct',
+        participants: {
+          some: {
+            userId,
+          },
+        },
+      },
+      select: {
+        id: true,
+        createdAt: true,
+        participants: {
+          select: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+                avatar: true,
+              },
+            },
+          },
+        },
+
+        messages: {
+          orderBy: {
+            createdAt: 'desc',
+          },
+          take: 1,
+          select: {
+            id: true,
+            chatId: true,
+            senderId: true,
+            text: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+      },
+    });
+
+    const chatPreviews: ChatPreview[] = chats.map((chat) => {
+      const otherUser = chat.participants.find(
+        (participant) => participant.user.id !== userId,
+      )!.user;
+
+      const lastMessage = chat.messages[0] ?? null;
+
+      return {
+        chatId: chat.id,
+        title: otherUser.username,
+        participantId: otherUser.id,
+        avatar: otherUser.avatar,
+        lastMessage,
+        lastMessageTime: lastMessage?.createdAt ?? chat.createdAt,
+        unreadCount: 0,
+      };
+    });
+
+    return chatPreviews;
   }
 }

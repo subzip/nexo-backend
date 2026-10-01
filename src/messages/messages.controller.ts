@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { MessagesService } from './messages.service';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
@@ -13,6 +21,14 @@ export class MessagesController {
   @Post()
   create(@Body() dto: CreateMessageDto, @CurrentUser() user: AuthUser) {
     return this.messagesService.create(dto, user.id);
+  }
+
+  @Get()
+  findMessagesByUsername(
+    @Query('username') username: string,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.messagesService.findMessagesByUsername(username, user.id);
   }
 
   @Get(':id')
