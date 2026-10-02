@@ -204,4 +204,20 @@ export class ConversationsService {
 
     return chatPreviews;
   }
+
+  async canAccessChat(chatId: string, userId: string) {
+    //make single request for chatIds array
+    const chat = await this.prisma.chat.findFirst({
+      where: {
+        id: chatId,
+        participants: {
+          some: {
+            userId,
+          },
+        },
+      },
+    });
+
+    return !!chat;
+  }
 }

@@ -3,11 +3,17 @@ import {
   MessageBody,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
-import { Server, Socket } from 'socket.io';
+import { Server, Socket, SocketData } from 'socket.io';
+import { WebsocketService } from './websocket.service';
+import { AppSocket } from './types/socket-data';
+import { SocketAuthMiddleware } from './middleware/socket-auth.middleware';
+import { JoinChatDto } from './dto/join-chat.dto';
+import { ConversationsService } from 'src/conversations/conversations.service';
 
 @WebSocketGateway({
   cors: {
@@ -16,18 +22,41 @@ import { Server, Socket } from 'socket.io';
   },
 })
 export class WebsocketGateway
-  implements OnGatewayConnection, OnGatewayDisconnect
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
   @WebSocketServer()
-  server: Server;
+  server: Server<
+    Record<string, never>,
+    Record<string, never>,
+    Record<string, never>,
+    SocketData
+  >;
 
-  handleConnection(client: Socket) {
-    console.log('Client connected', client.id);
-    console.log(client.handshake.headers.cookie);
+  constructor(
+    private readonly websocketService: WebsocketService,
+    private readonly socketAuthMiddleware: SocketAuthMiddleware,
+    private readonly conversationsService: ConversationsService,
+  ) {}
+
+  afterInit(server: Server) {
+    server.use(this.socketAuthMiddleware.middleware());
   }
 
-  handleDisconnect(client: Socket) {
-    console.log('Client disconnected', client.id);
+  handleConnection(client: AppSocket) {
+    const userId = client.data.user.id;
+
+    this.websocketService.addConnection(userId, client.id);
+
+    console.log('User sockets:', this.websocketService.getUserSockets(userId));
+    console.log(client.data.user);
+  }
+
+  handleDisconnect(client: AppSocket) {
+    const userId = client.data.user.id;
+
+    this.websocketService.removeConnection(userId, client.id);
+
+    console.log('Client disconnected:', client.id);
   }
 
   @SubscribeMessage('ping')
@@ -40,16 +69,19 @@ export class WebsocketGateway
     });
   }
 
-  @SubscribeMessage('join')
-  async handleJoin(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() room: string,
+  @SubscribeMessage('chat:join')
+  async handleJoinChat(
+    @ConnectedSocket() client: AppSocket,
+    @MessageBody() chatIds: JoinChatDto,
   ) {
-    await client.join(room);
+    const userId = client.data.user.id;
 
+    for (const chatId of chatIds.chatIds) {
+      if (!(await this.conversationsService.canAccessChat(chatId, userId)))
+        continue;
+      await client.join(chatId);
+    }
     console.log(client.rooms);
-
-    console.log(`${client.id} joined ${room}`);
   }
 
   @SubscribeMessage('room-message')
