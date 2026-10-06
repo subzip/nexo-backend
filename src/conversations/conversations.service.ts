@@ -220,4 +220,42 @@ export class ConversationsService {
 
     return !!chat;
   }
+
+  async getUserChatIds(userId: string) {
+    const chatIds = await this.prisma.chat.findMany({
+      where: {
+        participants: {
+          some: {
+            userId,
+          },
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    return chatIds.map((chat) => chat.id);
+  }
+
+  async getChatParticipantsWithPresence(chatId: string) {
+    const participants = await this.prisma.chatParticipants.findMany({
+      where: {
+        chatId,
+      },
+      select: {
+        userId: true,
+        user: {
+          select: {
+            lastSeen: true,
+          },
+        },
+      },
+    });
+
+    return participants.map((participant) => ({
+      userId: participant.userId,
+      lastSeen: participant.user.lastSeen,
+    }));
+  }
 }

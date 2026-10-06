@@ -1,13 +1,14 @@
 import { Socket } from 'socket.io';
 import { AuthUser } from 'src/auth/types/auth-user.type';
+import { ClientToServerEvents, ServerToClientEvents } from './socket-events';
 
 export type SocketData = {
   user: AuthUser;
 };
 
 export type AppSocket = Socket<
-  Record<string, never>,
-  Record<string, never>,
+  ClientToServerEvents,
+  ServerToClientEvents,
   Record<string, never>,
   SocketData
 >;

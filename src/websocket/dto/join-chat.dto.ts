@@ -1,6 +1,7 @@
-import { IsUUID } from 'class-validator';
+import { IsArray, IsUUID } from 'class-validator';
 
 export class JoinChatDto {
-  @IsUUID()
+  @IsArray()
+  @IsUUID('4', { each: true })
   chatIds: string[];
 }

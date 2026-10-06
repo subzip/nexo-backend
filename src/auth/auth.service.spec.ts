@@ -13,6 +13,7 @@ describe('AuthService', () => {
   const usersServiceMock = {
     findByUsername: jest.fn(),
     findByUsernameForAuth: jest.fn(),
+    findById: jest.fn(),
     create: jest.fn(),
   };
 
@@ -107,7 +108,17 @@ describe('AuthService', () => {
         passwordHash: 'hashed-password',
       };
 
+      const userInfo = {
+        id: 'user-id',
+        username: 'andrei',
+        avatar: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastSeen: null,
+      };
+
       usersServiceMock.findByUsernameForAuth.mockResolvedValue(user);
+      usersServiceMock.findById.mockResolvedValue(userInfo);
       argon2Mock.verify.mockResolvedValue(true);
       sessionsServiceMock.create.mockResolvedValue('session-token');
 
@@ -115,6 +126,7 @@ describe('AuthService', () => {
 
       expect(result).toEqual({
         sessionToken: 'session-token',
+        userInfo,
       });
 
       expect(usersServiceMock.findByUsernameForAuth).toHaveBeenCalledWith(
@@ -127,6 +139,8 @@ describe('AuthService', () => {
       );
 
       expect(sessionsServiceMock.create).toHaveBeenCalledWith('user-id');
+
+      expect(usersServiceMock.findById).toHaveBeenCalledWith('user-id');
     });
 
     it('should throw UnauthorizedException if user does not exist', async () => {

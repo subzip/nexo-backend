@@ -4,16 +4,12 @@ import { SessionsModule } from 'src/sessions/sessions.module';
 import { SocketAuthMiddleware } from './middleware/socket-auth.middleware';
 import { WebsocketService } from './websocket.service';
 import { ConversationsModule } from 'src/conversations/conversations.module';
-import { ConversationsService } from 'src/conversations/conversations.service';
+
 import { UsersModule } from 'src/users/users.module';
+import { MessagesModule } from 'src/messages/messages.module';
 
 @Module({
-  imports: [SessionsModule, ConversationsModule, UsersModule],
-  providers: [
-    WebsocketGateway,
-    SocketAuthMiddleware,
-    WebsocketService,
-    ConversationsService,
-  ],
+  imports: [SessionsModule, ConversationsModule, UsersModule, MessagesModule],
+  providers: [WebsocketGateway, SocketAuthMiddleware, WebsocketService],
 })
 export class WebsocketModule {}

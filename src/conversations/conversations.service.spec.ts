@@ -15,6 +15,7 @@ describe('ConversationsService', () => {
     },
     chatParticipants: {
       createMany: jest.fn(),
+      findMany: jest.fn(),
     },
     $transaction: jest.fn(),
   };
@@ -221,6 +222,106 @@ describe('ConversationsService', () => {
           },
         },
       });
+    });
+  });
+
+  describe('getUserChatIds', () => {
+    it('should return only the chat ids of a user', async () => {
+      prismaMock.chat.findMany.mockResolvedValue([
+        { id: 'chat-1' },
+        { id: 'chat-2' },
+      ]);
+
+      const result = await service.getUserChatIds('user-id');
+
+      expect(result).toEqual(['chat-1', 'chat-2']);
+      expect(prismaMock.chat.findMany).toHaveBeenCalledWith({
+        where: {
+          participants: {
+            some: {
+              userId: 'user-id',
+            },
+          },
+        },
+        select: {
+          id: true,
+        },
+      });
+    });
+
+    it('should return an empty array when the user has no chats', async () => {
+      prismaMock.chat.findMany.mockResolvedValue([]);
+
+      const result = await service.getUserChatIds('user-id');
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('getChatParticipantsWithPresence', () => {
+    it('should flatten participants with their lastSeen value', async () => {
+      const lastSeen = new Date('2026-01-01T00:00:00.000Z');
+
+      prismaMock.chatParticipants.findMany.mockResolvedValue([
+        { userId: 'user-1', user: { lastSeen: null } },
+        { userId: 'user-2', user: { lastSeen } },
+      ]);
+
+      const result = await service.getChatParticipantsWithPresence('chat-1');
+
+      expect(result).toEqual([
+        { userId: 'user-1', lastSeen: null },
+        { userId: 'user-2', lastSeen },
+      ]);
+      expect(prismaMock.chatParticipants.findMany).toHaveBeenCalledWith({
+        where: {
+          chatId: 'chat-1',
+        },
+        select: {
+          userId: true,
+          user: {
+            select: {
+              lastSeen: true,
+            },
+          },
+        },
+      });
+    });
+
+    it('should return an empty array for a chat with no participants', async () => {
+      prismaMock.chatParticipants.findMany.mockResolvedValue([]);
+
+      const result = await service.getChatParticipantsWithPresence('chat-1');
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('canAccessChat', () => {
+    it('should return true when the user participates in the chat', async () => {
+      prismaMock.chat.findFirst.mockResolvedValue({ id: 'chat-1' });
+
+      const result = await service.canAccessChat('chat-1', 'user-id');
+
+      expect(result).toBe(true);
+      expect(prismaMock.chat.findFirst).toHaveBeenCalledWith({
+        where: {
+          id: 'chat-1',
+          participants: {
+            some: {
+              userId: 'user-id',
+            },
+          },
+        },
+      });
+    });
+
+    it('should return false when the chat does not exist', async () => {
+      prismaMock.chat.findFirst.mockResolvedValue(null);
+
+      const result = await service.canAccessChat('chat-1', 'user-id');
+
+      expect(result).toBe(false);
     });
   });
 });

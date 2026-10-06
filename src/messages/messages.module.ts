@@ -9,5 +9,6 @@ import { SessionsModule } from 'src/sessions/sessions.module';
   imports: [PrismaModule, UsersModule, SessionsModule],
   controllers: [MessagesController],
   providers: [MessagesService],
+  exports: [MessagesService],
 })
 export class MessagesModule {}

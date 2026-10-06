@@ -61,4 +61,13 @@ export class UsersService {
       },
     });
   }
+
+  async updateLastSeen(userId: string, lastSeen: Date | null) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        lastSeen,
+      },
+    });
+  }
 }
