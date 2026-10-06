@@ -1,10 +1,31 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { PrismaService } from './prisma/prisma.service';
+import { PrismaModule } from './prisma/prisma.module';
+import { UsersModule } from './users/users.module';
+import { ConfigModule } from '@nestjs/config';
+import { AuthModule } from './auth/auth.module';
+import { ConversationsModule } from './conversations/conversations.module';
+import { SessionsModule } from './sessions/sessions.module';
+import { MessagesModule } from './messages/messages.module';
+import { WebsocketModule } from './websocket/websocket.module';
 
 @Module({
-  imports: [],
+  imports: [
+    PrismaModule,
+    UsersModule,
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: process.env.NODE_ENV === 'test' ? '.env.test' : '.env',
+    }),
+    AuthModule,
+    ConversationsModule,
+    SessionsModule,
+    MessagesModule,
+    WebsocketModule,
+  ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, PrismaService],
 })
 export class AppModule {}
