@@ -15,7 +15,10 @@ import { WebsocketModule } from './websocket/websocket.module';
   imports: [
     PrismaModule,
     UsersModule,
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: process.env.NODE_ENV === 'test' ? '.env.test' : '.env',
+    }),
     AuthModule,
     ConversationsModule,
     SessionsModule,

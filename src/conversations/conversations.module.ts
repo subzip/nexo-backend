@@ -11,5 +11,6 @@ import { SessionAuthGuard } from 'src/auth/guards/session-auth.guard';
   imports: [PrismaModule, UsersModule, AuthModule, SessionsModule],
   controllers: [ConversationsController],
   providers: [ConversationsService, SessionAuthGuard],
+  exports: [ConversationsService],
 })
 export class ConversationsModule {}

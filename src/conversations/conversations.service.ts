@@ -204,4 +204,58 @@ export class ConversationsService {
 
     return chatPreviews;
   }
+
+  async canAccessChat(chatId: string, userId: string) {
+    //make single request for chatIds array
+    const chat = await this.prisma.chat.findFirst({
+      where: {
+        id: chatId,
+        participants: {
+          some: {
+            userId,
+          },
+        },
+      },
+    });
+
+    return !!chat;
+  }
+
+  async getUserChatIds(userId: string) {
+    const chatIds = await this.prisma.chat.findMany({
+      where: {
+        participants: {
+          some: {
+            userId,
+          },
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    return chatIds.map((chat) => chat.id);
+  }
+
+  async getChatParticipantsWithPresence(chatId: string) {
+    const participants = await this.prisma.chatParticipants.findMany({
+      where: {
+        chatId,
+      },
+      select: {
+        userId: true,
+        user: {
+          select: {
+            lastSeen: true,
+          },
+        },
+      },
+    });
+
+    return participants.map((participant) => ({
+      userId: participant.userId,
+      lastSeen: participant.user.lastSeen,
+    }));
+  }
 }

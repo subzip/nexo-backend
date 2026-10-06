@@ -71,12 +71,22 @@ describe('AuthController', () => {
 
       const sessionToken = 'session-token';
 
+      const userInfo = {
+        id: 'user-id',
+        username: 'andrei',
+        avatar: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastSeen: null,
+      };
+
       const response = {
         cookie: jest.fn(),
       };
 
       authServiceMock.login.mockResolvedValue({
         sessionToken,
+        userInfo,
       });
 
       const result = await controller.login(
@@ -84,9 +94,7 @@ describe('AuthController', () => {
         response as unknown as Response,
       );
 
-      expect(result).toEqual({
-        message: 'Logged in',
-      });
+      expect(result).toEqual(userInfo);
 
       expect(authServiceMock.login).toHaveBeenCalledWith(dto);
 

@@ -9,6 +9,7 @@ describe('UsersService', () => {
     user: {
       create: jest.fn(),
       findUnique: jest.fn(),
+      update: jest.fn(),
     },
   };
 
@@ -146,6 +147,40 @@ describe('UsersService', () => {
       const result = await service.findByUsername('unknown');
 
       expect(result).toBeNull();
+    });
+  });
+
+  describe('updateLastSeen', () => {
+    it('should persist a concrete lastSeen date', async () => {
+      const lastSeen = new Date('2026-01-01T00:00:00.000Z');
+
+      prismaMock.user.update.mockResolvedValue({
+        id: 'user-id',
+        lastSeen,
+      });
+
+      const result = await service.updateLastSeen('user-id', lastSeen);
+
+      expect(result).toEqual({ id: 'user-id', lastSeen });
+      expect(prismaMock.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-id' },
+        data: { lastSeen },
+      });
+    });
+
+    it('should clear lastSeen when the user comes online', async () => {
+      prismaMock.user.update.mockResolvedValue({
+        id: 'user-id',
+        lastSeen: null,
+      });
+
+      const result = await service.updateLastSeen('user-id', null);
+
+      expect(result).toEqual({ id: 'user-id', lastSeen: null });
+      expect(prismaMock.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-id' },
+        data: { lastSeen: null },
+      });
     });
   });
 });

@@ -3,11 +3,27 @@ import {
   MessageBody,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
+  WsException,
 } from '@nestjs/websockets';
-import { Server, Socket } from 'socket.io';
+import { DefaultEventsMap, Server, SocketData } from 'socket.io';
+import { WebsocketService } from './websocket.service';
+import { AppSocket } from './types/socket-data';
+import { SocketAuthMiddleware } from './middleware/socket-auth.middleware';
+import { JoinChatDto } from './dto/join-chat.dto';
+import { ConversationsService } from 'src/conversations/conversations.service';
+import { MessageSendDto } from './dto/message-send.dto';
+import { MessagesService } from 'src/messages/messages.service';
+import { UsePipes, ValidationPipe } from '@nestjs/common';
+import { UsersService } from 'src/users/users.service';
+import {
+  ChatPresence,
+  ClientToServerEvents,
+  ServerToClientEvents,
+} from './types/socket-events';
 
 @WebSocketGateway({
   cors: {
@@ -15,51 +31,143 @@ import { Server, Socket } from 'socket.io';
     credentials: true,
   },
 })
+@UsePipes(
+  new ValidationPipe({
+    whitelist: true,
+    transform: true,
+    exceptionFactory: (errors) => new WsException(errors),
+  }),
+)
 export class WebsocketGateway
-  implements OnGatewayConnection, OnGatewayDisconnect
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
   @WebSocketServer()
-  server: Server;
+  server: Server<
+    ClientToServerEvents,
+    ServerToClientEvents,
+    DefaultEventsMap,
+    SocketData
+  >;
 
-  handleConnection(client: Socket) {
-    console.log('Client connected', client.id);
-    console.log(client.handshake.headers.cookie);
+  constructor(
+    private readonly websocketService: WebsocketService,
+    private readonly socketAuthMiddleware: SocketAuthMiddleware,
+    private readonly conversationsService: ConversationsService,
+    private readonly messagesService: MessagesService,
+    private readonly usersService: UsersService,
+  ) {}
+
+  afterInit(server: Server) {
+    server.use(this.socketAuthMiddleware.middleware());
   }
 
-  handleDisconnect(client: Socket) {
-    console.log('Client disconnected', client.id);
+  async handleConnection(client: AppSocket) {
+    const userId = client.data.user.id;
+
+    const wasOffline = !this.websocketService.isUserOnline(userId);
+
+    this.websocketService.addConnection(userId, client.id);
+
+    if (wasOffline) {
+      const chatIds = await this.conversationsService.getUserChatIds(userId);
+
+      await this.usersService.updateLastSeen(userId, null);
+
+      chatIds.forEach((id) => {
+        this.server
+          .to(id)
+          .emit('user:online', { userId, online: true, lastSeen: null });
+      });
+    }
   }
 
-  @SubscribeMessage('ping')
-  handlePing(@ConnectedSocket() client: Socket, @MessageBody() data: unknown) {
-    console.log('Ping ', client.id);
-    console.log('Data: ', data);
+  async handleDisconnect(client: AppSocket) {
+    const userId = client.data.user.id;
 
-    client.emit('pong', {
-      message: 'hi from server',
-    });
+    this.websocketService.removeConnection(userId, client.id);
+
+    if (!this.websocketService.isUserOnline(userId)) {
+      const lastSeen = new Date();
+
+      await this.usersService.updateLastSeen(userId, lastSeen);
+
+      const chatIds = await this.conversationsService.getUserChatIds(userId);
+
+      chatIds.forEach((id) => {
+        this.server
+          .to(id)
+          .emit('user:offline', { userId, online: false, lastSeen });
+      });
+    }
   }
 
-  @SubscribeMessage('join')
-  async handleJoin(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() room: string,
+  @SubscribeMessage('presence:request')
+  async handlePresence(@ConnectedSocket() client: AppSocket) {
+    const userId = client.data.user.id;
+
+    //many db requests, cuz every chat will be doing request to db
+    const chatIds = await this.conversationsService.getUserChatIds(userId);
+
+    const chats: ChatPresence[] = [];
+
+    for (const chatId of chatIds) {
+      const participants =
+        await this.conversationsService.getChatParticipantsWithPresence(chatId);
+
+      const users = participants
+        .filter((participant) => participant.userId !== userId)
+        .map((participant) => ({
+          userId: participant.userId,
+          online: this.websocketService.isUserOnline(participant.userId),
+          lastSeen: participant.lastSeen,
+        }));
+
+      chats.push({
+        chatId,
+        users,
+      });
+    }
+
+    client.emit('presence:sync', chats);
+  }
+
+  @SubscribeMessage('chat:join')
+  async handleJoinChat(
+    @ConnectedSocket() client: AppSocket,
+    @MessageBody() data: JoinChatDto,
   ) {
-    await client.join(room);
+    const userId = client.data.user.id;
+    const joinedChatIds: string[] = [];
 
-    console.log(client.rooms);
+    for (const chatId of data.chatIds) {
+      if (!(await this.conversationsService.canAccessChat(chatId, userId))) {
+        continue;
+      }
 
-    console.log(`${client.id} joined ${room}`);
+      await client.join(chatId);
+      joinedChatIds.push(chatId);
+    }
+
+    return { joinedChatIds };
+
+    //do chat leave
   }
 
-  @SubscribeMessage('room-message')
-  handleRoomMessage(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() data: { room: string; text: string },
+  @SubscribeMessage('chat:send')
+  async handleMessageSend(
+    @ConnectedSocket() client: AppSocket,
+    @MessageBody() data: MessageSendDto,
   ) {
-    this.server.to(data.room).emit('room-message', {
-      from: client.id,
-      text: data.text,
-    });
+    const userId = client.data.user.id;
+
+    if (!(await this.conversationsService.canAccessChat(data.chatId, userId)))
+      return;
+
+    const message = await this.messagesService.create(
+      { chatId: data.chatId, text: data.content },
+      userId,
+    );
+    this.server.to(data.chatId).emit('message:new', message);
+    //msg emit to client
   }
 }
