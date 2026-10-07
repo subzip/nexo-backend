@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
+import { SearchUsersDto } from './dto/search-users.dto';
 
 @Injectable()
 export class UsersService {
@@ -71,7 +72,7 @@ export class UsersService {
     });
   }
 
-  async findByUsernameSearch(dto: CreateUserDto, userId: string) {
+  async findByUsernameSearch(dto: SearchUsersDto, userId: string) {
     return this.prisma.user.findMany({
       where: {
         username: {
