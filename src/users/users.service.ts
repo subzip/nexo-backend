@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { CreateUserDto } from './dto/create-user.dto/create-user.dto';
+import { CreateUserDto } from './dto/create-user.dto';
 
 @Injectable()
 export class UsersService {
@@ -67,6 +67,26 @@ export class UsersService {
       where: { id: userId },
       data: {
         lastSeen,
+      },
+    });
+  }
+
+  async findByUsernameSearch(dto: CreateUserDto, userId: string) {
+    return this.prisma.user.findMany({
+      where: {
+        username: {
+          contains: dto.username,
+          mode: 'insensitive',
+        },
+        id: {
+          not: userId,
+        },
+      },
+      select: {
+        id: true,
+        username: true,
+        avatar: true,
+        lastSeen: true,
       },
     });
   }
