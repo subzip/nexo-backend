@@ -39,7 +39,7 @@ export class UsersController {
     @Query() dto: SearchUsersDto,
     @CurrentUser() user: AuthUser,
   ) {
-    return await this.usersService.findByUsernameSearch(dto, user.id);
+    return this.usersService.findByUsernameSearch(dto, user.id);
   }
 
   @Get(':id')
