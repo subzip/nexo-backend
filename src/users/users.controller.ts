@@ -14,6 +14,12 @@ import { SessionAuthGuard } from 'src/auth/guards/session-auth.guard';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { AuthUser } from 'src/auth/types/auth-user.type';
 import { SearchUsersDto } from './dto/search-users.dto';
+import {
+  ApiOkResponse,
+  ApiOperation,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
+import { SearchUserResponseDto } from './dto/search-users-response.dto';
 
 @Controller('users')
 export class UsersController {
@@ -33,6 +39,9 @@ export class UsersController {
     return user;
   }
 
+  @ApiOperation({ summary: 'Search users by username' })
+  @ApiOkResponse({ type: SearchUserResponseDto, isArray: true })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   @Get('search')
   @UseGuards(SessionAuthGuard)
   async findByUsernameSearch(
